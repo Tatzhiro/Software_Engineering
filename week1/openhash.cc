@@ -4,7 +4,7 @@
 #include "integers.hh"
 
 // max is around 2,091,000
-#define BUCKET_SIZE (LENGTH * 2)
+#define BUCKET_SIZE (LENGTH)
 #define DELTA 3
 
 struct timeval
@@ -29,7 +29,7 @@ void printer(int hash[])
     }
 }
 
-float hashInsert(int bucket[], int *numbers)
+double hashInsert(int bucket[], int *numbers)
 {
     struct timeval begin, end;
     std::cout << "----insert----" << std::endl;
@@ -111,11 +111,12 @@ int main()
         bucket[i] = -1;
     }
 
-    float insertion_time = hashInsert(bucket, numbers);
+    double insertion_time = hashInsert(bucket, numbers);
     //printer(bucket);
     std::cout << "insertion time: " << insertion_time << "μs" << std::endl;
     while (true)
     {
+        std::cout << "----Search----" << std::endl;
         int key;
         std::cout << "key: ";
         std::cin >> key;
@@ -133,10 +134,76 @@ int main()
             std::cout << "hash search + insertion: " << hash_time << " + " << insertion_time << " = " << hash_time + insertion_time << "μs" << std::endl;
         }
         char c = '\0';
-        std::cout << "print? ";
+        std::cout << "print? (yes = y)";
         std::cin >> c;
-        std::cout << std::endl;
         if (c == 'y')
             printer(bucket);
     }
 }
+
+/*
+---REPORT---
+This code is an implementation of open addressing hash.
+First, unique random integers of size LENGTH is produced (using integers.hh).
+Once that is done, the random integers are hashed and stored in int bucket[BUCKET_SIZE]
+which is a simple integer array structure that is filled with -1 initially.
+Random integers are hashed by modulo operation by BUCKET_SIZE.
+When inserting a number into the bucket, there is a chance that collision occurs.
+In such case, DELTA is added to the index of the number so that the number can be
+attempted to be inserted to the bucket again but to a different position.
+Hash Search is done in a similar way in a sense that the search index is calculated 
+first by modulo operation, and when the search key does not match with the inserted value,
+DELTA is added so to search for the key until the index repeats itself.
+
+
+---EXECUTION RESULT---
+LENGTH 1M
+BUCKET_SIZE 2M
+search key: 2013999462
+***Result***
+bsearch: 109μs
+hash: 0μs
+hash search + insertion: 0 + 13059 = 13059μs
+
+LENGTH 1M
+BUCKET_SIZE 1M
+search key: 23702
+***Result***
+bsearch: 4μs
+hash: 1μs
+hash search + insertion: 1 + 689797 = 689798μs
+
+LENGTH 1M
+BUCKET_SIZE 1M
+search key: 1731251102
+***Result***
+bsearch: 1μs
+hash: 0μs
+hash search + insertion: 0 + 1 = 1μs
+
+*Comparison between Binary Search and Open Addressing Hash
+
+In most cases, open addressing hash outperforms binary search 
+as the complexity of the search is O(1) and O(logN) respectively.
+Hash tables' especially more efficient when there are no collisions
+between the inserted numbers.
+
+However, when the bucket size is the same as the data size,
+the chance of data collisions would be much higher, leading to
+more loops to find the open index in the bucket.
+Depending on the number of collisions the search key will have,
+binary search can outperform hash tables, although hash table is
+still more likely to outperform binary search.
+
+Moreover, when the data size is extremely large or the bucket size is small, 
+building the hash table will cost great amount of time compared to
+the search time of binary search.
+
+In conclusion, hash table is more efficient as the complexity of the search
+is ideally O(1) while the complexity of binary search is O(logN). 
+Especially, if you want to search through big amount of data several times,
+building a hash table would yield less cost in the long term.
+In the short term, however, binary search would yield less cost because
+the cost of building a hash table can be much higher than few searches
+done with binary search algorithms.
+*/

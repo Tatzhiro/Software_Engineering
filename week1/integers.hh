@@ -6,10 +6,10 @@
 
 using namespace std;
 
-#define LENGTH 1000000
+#define LENGTH 10
 
 #define lower 1
-#define upper 100 * LENGTH
+#define upper 1 * LENGTH
 
 int createRandom()
 {
