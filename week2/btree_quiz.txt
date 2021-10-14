@@ -1,0 +1,35 @@
+NODE *
+insert_in_leaf(NODE *leaf, int key, DATA *data)
+{
+	int i;
+	if (key < leaf->key[0])
+	{
+		for (i = leaf->nkey; i > 0; i--)
+		{
+			leaf->chi[i] = leaf->chi[i - 1];
+			leaf->key[i] = leaf->key[i - 1];
+		}
+		leaf->key[0] = key;
+		leaf->chi[0] = (NODE *)data;
+	}
+	else
+	{
+		for (i = 0; i < leaf->nkey; i++)
+		{
+			if (key < leaf->key[i])
+				break;
+		}
+		for (int j = leaf->nkey; j > i; j--)
+		{
+			leaf->chi[j] = leaf->chi[j - 1];
+			leaf->key[j] = leaf->key[j - 1];
+		}
+		leaf->key[i] = key;
+		leaf->chi[i] = (NODE *)data;
+
+		/* CodeQuiz */
+	}
+	leaf->nkey++;
+
+	return leaf;
+}
