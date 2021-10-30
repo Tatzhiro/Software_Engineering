@@ -1,7 +1,7 @@
 #include <iostream>
 #include <cassert>
 #include <sys/time.h>
-#include "integers.hh"
+#include "../integers.hh"
 
 // max is around 2,091,000
 #define BUCKET_SIZE (LENGTH)

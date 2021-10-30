@@ -1,5 +1,5 @@
 #include <iostream>
-#include "integers.hh"
+#include "../integers.hh"
 
 int main()
 {
