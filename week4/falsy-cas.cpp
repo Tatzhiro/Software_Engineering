@@ -45,13 +45,13 @@ void List_Init(list_t *L)
     L->lock = 0;
 }
 
-bool myLock(int flag)
+bool myLock(int &flag)
 {
     int expected = 0;
     return __atomic_compare_exchange_n(&flag, &expected, 1, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
 }
 
-void unLock(int flag)
+void unLock(int &flag)
 {
     __atomic_store_n(&flag, 0, __ATOMIC_SEQ_CST);
 }

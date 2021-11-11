@@ -13,7 +13,7 @@
 
 using namespace std;
 
-#define BUCKETS (100000)
+#define BUCKETS (10000000)
 int thread_number = 4;
 
 typedef struct _TUPLE
@@ -31,8 +31,8 @@ typedef struct __node_t
 typedef struct __list_t
 {
     node_t *head;
-    pthread_mutex_t lock;
-    //int lock;
+    //pthread_mutex_t lock;
+    int lock;
 } list_t;
 
 typedef struct __hash_t
@@ -50,22 +50,22 @@ typedef struct
 void List_Init(list_t *L)
 {
     L->head = NULL;
-    pthread_mutex_init(&L->lock, NULL);
-    //L->lock = 0;
+    //pthread_mutex_init(&L->lock, NULL);
+    L->lock = 0;
 }
 
-/*
-bool myLock(int flag)
+
+bool myLock(int& flag)
 {
     int expected = 0;
     return __atomic_compare_exchange_n(&flag, &expected, 1, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
 }
 
-void unLock(int flag)
+void unLock(int& flag)
 {
     __atomic_store_n(&flag, 0, __ATOMIC_SEQ_CST);
 }
-*/
+
 
 bool List_Insert(list_t *L, TUPLE *key)
 {
@@ -75,11 +75,11 @@ bool List_Insert(list_t *L, TUPLE *key)
     node->key = key;
     while (1)
     {
-        if (pthread_mutex_trylock(&L->lock) == 0)
+        if (myLock(L->lock))
         {
             node->next = L->head;
             L->head = node;
-            pthread_mutex_unlock(&L->lock);
+            unLock(L->lock);
             return 1;
         }
         else
@@ -91,18 +91,18 @@ bool List_Insert(list_t *L, TUPLE *key)
 
 TUPLE *List_Lookup(list_t *L, int id)
 {
-    pthread_mutex_lock(&L->lock);
+    myLock(L->lock);
     node_t *curr = L->head;
     while (curr)
     {
         if (curr->key->key == id)
         {
-            pthread_mutex_unlock(&L->lock);
+            unLock(L->lock);
             return curr->key; // success
         }
         curr = curr->next;
     }
-    pthread_mutex_unlock(&L->lock);
+    unLock(L->lock);
     return NULL; // failure
 }
 
@@ -126,7 +126,7 @@ void printer(hash_t *hash)
 {
     node_t *n;
     printf("Bucket\n");
-    for (int i = 0; i < BUCKETS; i++)
+    for (int i = 0; i < 2; i++)
     {
         printf("[%d] ", i);
         if (hash->lists[i].head == NULL)
@@ -185,9 +185,9 @@ hash_t *create_hash_table(hash_t *hash, TUPLE *p, int length)
     //{
 
     Hash_Init(hash);
-    thread t[thread_number - 1];
-    myarg_t args[thread_number - 1];
-    for (int i = 0; i < thread_number - 1; i++)
+    thread t[thread_number];
+    myarg_t args[thread_number];
+    for (int i = 0; i < thread_number; i++)
     {
         args[i].start = length / thread_number * i;
         args[i].end = length / thread_number * (i + 1);

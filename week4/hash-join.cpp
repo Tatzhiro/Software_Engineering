@@ -12,10 +12,15 @@
 #include <vector>
 using namespace std;
 
-#define SZ_PAGE 4096
+//2,091,000
+#define SZ_PAGE (1024 * 1024 * 100)
 #define NB_BUFR (SZ_PAGE * 2 / sizeof(TUPLE))
 #define NB_BUFS (SZ_PAGE * 16 / sizeof(TUPLE))
+//#define NB_BUFR (80000000)
+//#define NB_BUFS (100000000)
+//1024 * 100
 
+// 4096
 // 1024 * 8192
 
 /*
@@ -25,6 +30,12 @@ typedef struct _TUPLE
     int val;
 } TUPLE;
 */
+
+namespace psearch
+{
+    int thread_number = 4;
+    int lock = 0;
+};
 
 typedef struct _RESULT
 {
@@ -37,9 +48,30 @@ typedef struct _RESULT
 void printDiff(struct timeval begin, struct timeval end)
 {
     long diff;
-
+    gettimeofday(&end, NULL);
     diff = (end.tv_sec - begin.tv_sec) * 1000 * 1000 + (end.tv_usec - begin.tv_usec);
     printf("Diff: %ld us (%ld ms)\n", diff, diff / 1000);
+}
+
+void join(hash_t *hashS, TUPLE bufR[NB_BUFR], myarg_t *arg, long int *sum, int *num_join)
+{
+    //printf("thread %d start\n", arg->thread_id);
+    TUPLE *s_pointer = NULL;
+    int resultVal = 0;
+    int number_of_joins = 0;
+    int start = arg->start;
+    int end = arg->end;
+    for (int i = start; i < end; i++)
+    {
+        s_pointer = Hash_Lookup(hashS, bufR[i].key);
+        if (s_pointer != NULL)
+        {
+            resultVal += bufR[i].val;
+            number_of_joins++;
+        }
+    }
+    __atomic_add_fetch(num_join, number_of_joins, __ATOMIC_SEQ_CST);
+    __atomic_add_fetch(sum, resultVal, __ATOMIC_SEQ_CST);
 }
 
 int main(void)
@@ -47,19 +79,28 @@ int main(void)
     int rfd;
     int sfd;
     int nr;
+    int amount_of_nr = 0;
     int ns;
     int number_of_joins = 0;
     int count = 0;
-    TUPLE bufR[NB_BUFR];
-    TUPLE bufS[NB_BUFS];
+    //TUPLE bufR[NB_BUFR];
+    //TUPLE bufS[NB_BUFS];
+    TUPLE *bufR = (TUPLE *)malloc(sizeof(TUPLE) * NB_BUFR);
+    if (bufR == NULL)
+        ERR;
+    TUPLE *bufS = (TUPLE *)malloc(sizeof(TUPLE) * NB_BUFS);
+    if (bufS == NULL)
+        ERR;
     RESULT result;
-    int resultVal = 0;
+    myarg_t args[psearch::thread_number];
+    long int resultVal = 0;
+    thread t[psearch::thread_number];
     struct timeval begin, end;
 
-    rfd = open("R", O_RDONLY);
+    rfd = open("../week5/R", O_RDONLY);
     if (rfd == -1)
         ERR;
-    sfd = open("S", O_RDONLY);
+    sfd = open("../week5/S", O_RDONLY);
     if (sfd == -1)
         ERR;
     hash_t *hashS = (hash_t *)malloc(sizeof(hash_t));
@@ -71,6 +112,7 @@ int main(void)
     {
         cout << count++ << endl;
         nr = read(rfd, bufR, NB_BUFR * sizeof(TUPLE));
+        amount_of_nr = nr / (int)sizeof(TUPLE);
         if (nr == -1)
             ERR;
         else if (nr == 0)
@@ -90,11 +132,35 @@ int main(void)
             //cout << "ns / (int)sizeof(TUPLE) = " << ns / (int)sizeof(TUPLE) << endl;
             // join
             create_hash_table(hashS, bufS, ns / (int)sizeof(TUPLE));
+            printDiff(begin, end);
             //hashBuild(hashS, bufS, ns / (int)sizeof(TUPLE));
+            for (int i = 0; i < psearch::thread_number; i++)
+            {
+                args[i].thread_id = i + 1;
+                args[i].start = amount_of_nr / psearch::thread_number * i;
+                if (i + 1 == psearch::thread_number)
+                {
+                    args[i].end = amount_of_nr;
+                    break;
+                }
+                args[i].end = amount_of_nr / psearch::thread_number * (i + 1);
+            }
+
+            for (int i = 0; i < psearch::thread_number; i++)
+            {
+                //cout << "thread create" << endl;
+                t[i] = thread(join, hashS, bufR, &args[i], &resultVal, &number_of_joins);
+                //t.emplace_back(mythread, hash, p, args[i]);
+            }
+            for (int i = 0; i < psearch::thread_number; i++)
+            {
+                t[i].join();
+            }
+
+            /*
             TUPLE *s_pointer = NULL;
             for (int i = 0; i < nr / (int)sizeof(TUPLE); i++)
             {
-
                 s_pointer = Hash_Lookup(hashS, bufR[i].key);
                 if (s_pointer != NULL)
                 {
@@ -107,12 +173,16 @@ int main(void)
                     number_of_joins++;
                 }
             }
+            */
         }
     }
-    gettimeofday(&end, NULL);
     //countIndex(hashS);
     printDiff(begin, end);
-    printf("Result: %d\n", resultVal);
+    printf("Result: %ld\n", resultVal);
     printf("number of joins = %d\n", number_of_joins);
     return 0;
 }
+
+// R 100000 S 300000
+// Diff: 2574397 us (2574 ms)
+// Diff: 65313679 us (65313 ms)

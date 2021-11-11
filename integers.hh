@@ -6,7 +6,7 @@
 
 using namespace std;
 
-#define LENGTH 10000000
+#define LENGTH 100000000
 
 #define lower 1
 #define upper 1 * LENGTH
